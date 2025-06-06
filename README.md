@@ -26,7 +26,7 @@ Web-приложение для управления расписанием по
 1. Клонируйте репозиторий:
 
    ```bash
-   git clone https://github.com/yourusername/django-schedule-manager.git
+   git clone https://github.com/Megila/django-schedule-manager
    cd django-schedule-manager
    ```
 
