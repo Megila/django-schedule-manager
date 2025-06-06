@@ -1,0 +1,50 @@
+{% extends "schedule/base.html" %}
+
+{% block content %}
+  <div class="card shadow-sm mx-auto" style="border-radius: 10px; width: 100%; max-width: 500px; padding-top: 20px; padding-bottom: 20px; min-height: 600px;">
+    <div class="card-body d-flex flex-column">
+      <h2 class="card-title text-center mb-4">
+        {{ user_view.get_full_name|default:user_view.username }}
+      </h2>
+
+      <p><strong>Телефон:</strong> {{ profile.phone_number|default:"Не указан" }}</p>
+      <hr>
+      <p><strong>Электронная почта:</strong> {{ user_view.email }}</p>
+      <hr>
+
+      <p><strong>Участие в проектах:</strong>
+        <ul style="padding-left: 20px;">
+          {% for project in projects %}
+            <li>{{ project.name }}</li>
+          {% empty %}
+            <li>Нет проектов</li>
+          {% endfor %}
+        </ul>
+      </p>
+      <hr>
+
+      {% if is_owner %}
+        <form method="post">
+          {% csrf_token %}
+          <div class="form-group">
+            <h5 class="text-center mb-4">Выбор рабочего расписания:</h5>
+            <div class="d-flex justify-content-between">
+              <div class="form-check">
+                <input class="form-check-input custom-radio" type="radio" name="schedule_mode" id="schedule_one" value="one" {% if profile.schedule_mode == "one" %}checked{% endif %}>
+                <label class="form-check-label" for="schedule_one">Одна неделя</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input custom-radio" type="radio" name="schedule_mode" id="schedule_two" value="two" {% if profile.schedule_mode == "two" %}checked{% endif %}>
+                <label class="form-check-label" for="schedule_two">Две недели</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="text-center mt-auto">
+            <button type="submit" class="btn btn-success">Сохранить</button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

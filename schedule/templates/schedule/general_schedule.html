@@ -1,0 +1,97 @@
+{% extends "schedule/base.html" %}
+{% load schedule_tags %}
+
+{% block content %}
+<h2 class="mb-4">Общее расписание на {{ selected_date }}</h2>
+
+<div class="d-flex gap-4 align-items-stretch mb-4">
+  <!-- Панель управления -->
+  <div class="card shadow-sm flex-grow-1">
+    <div class="card-body">
+      <form method="get">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <!-- Переключение дат -->
+          <div class="d-flex gap-2 align-items-center border rounded overflow-hidden bg-light shadow-sm">
+            <button type="submit" name="date" value="{{ previous_date|date:'Y-m-d' }}" class="btn btn-secondary px-3">‹</button>
+
+            <div class="px-4 py-2 text-center">
+              {% if selected_date == today %}
+                <strong>Сегодня</strong>
+              {% else %}
+                <strong>{{ selected_date|date:'d.m.Y' }}</strong>
+              {% endif %}
+            </div>
+
+            <button type="submit" name="date" value="{{ next_date|date:'Y-m-d' }}" class="btn btn-secondary px-3">›</button>
+          </div>
+
+          <!-- Фильтр по проекту -->
+          <div>
+            <select name="project" id="project-select" onchange="this.form.submit()" class="form-select">
+              <option value="">Все проекты</option>
+              {% for p in projects %}
+                <option value="{{ p.id }}" {% if project and project.id == p.id %}selected{% endif %}>{{ p.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Легенда -->
+  <div class="card shadow-sm" style="min-width: 200px;">
+    <div class="card-body d-flex flex-column gap-2 justify-content-center h-100">
+      <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-color legend-available"></span> Доступен
+      </div>
+      <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-color legend-unavailable"></span> Недоступен
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Таблица -->
+<div class="schedule-fullwidth-wrapper">
+  <div class="schedule-table">
+    <div class="schedule-header d-flex">
+      <div class="user-name"><strong>Имя сотрудника</strong></div>
+      {% for hour in hours %}
+        <div class="time-slot">{{ hour }}:00</div>
+      {% endfor %}
+    </div>
+
+    {% if user_slots %}
+      {% for user, blocks in user_slots.items %}
+        <div class="user-schedule-wrapper " style="margin-bottom: 5px">
+          <div class="user-name">
+            <a href="{% url 'user_profile' user.username %}">
+              {{ user.get_full_name|default:user.username }}
+            </a>
+
+          </div>
+          <div class="user-schedule d-flex">
+            {% for block in blocks %}
+              {% if block.type == 'activity' %}
+                <div class="activity-block {{ block.status_class }}"
+                     style="left: calc(({{ block.start_offset }} - 9) * (100% / {{ hours|length }}));
+                            width: calc({{ block.duration }} * (100% / {{ hours|length }}));">
+                  <div class="activity">
+                    <strong>{{ block.activity }}</strong><br>
+                    <small>{{ block.availability }}</small><br>
+                    <small>{{ block.start_time|time:"H:i" }}–{{ block.end_time|time:"H:i" }}</small>
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+
+      {% endfor %}
+    {% else %}
+      <p class="ps-3">Нет данных для выбранной даты и проекта.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

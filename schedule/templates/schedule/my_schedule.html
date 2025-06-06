@@ -1,0 +1,105 @@
+{% extends "schedule/base.html" %}
+{% load schedule_tags %}
+
+{% block content %}
+<h2 class="mb-4">Моё расписание</h2>
+<div class="d-flex gap-4 align-items-stretch mb-4">
+  <!-- Панель управления -->
+  <div class="card shadow-sm flex-grow-1">
+    <div class="card-body d-flex justify-content-between align-items-start">
+      <!-- Выбор режима -->
+      <form method="get" class="btn-group-vertical" role="group" aria-label="Выбор режима">
+        <input type="hidden" name="week" value="{{ week_number }}">
+        <button type="submit" name="mode" value="operational"
+                class="btn btn-outline-secondary {% if mode == 'operational' %}active{% endif %}">
+          Оперативное расписание
+        </button>
+        <button type="submit" name="mode" value="template"
+                class="btn btn-outline-secondary {% if mode == 'template' %}active{% endif %}">
+          Шаблонное расписание
+        </button>
+      </form>
+
+      <!-- Выбор недели -->
+      <form method="get" class="btn-group-vertical" role="group" aria-label="Выбор недели">
+        <input type="hidden" name="mode" value="{{ mode }}">
+        <button type="submit" name="week" value="1"
+                class="btn btn-outline-secondary {% if week_number == 1 %}active{% endif %}">
+          1 неделя
+        </button>
+        <button type="submit" name="week" value="2"
+                class="btn btn-outline-secondary {% if week_number == 2 %}active{% endif %}">
+          2 неделя
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Легенда -->
+  <div class="card shadow-sm" style="min-width: 200px;">
+    <div class="card-body d-flex flex-column gap-2 justify-content-center h-100">
+      <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-color legend-available"></span> Доступен
+      </div>
+      <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-color legend-unavailable"></span> Недоступен
+      </div>
+      <div class="legend-item d-flex align-items-center gap-2">
+        <span class="legend-color legend-operational d-inline-flex align-items-center justify-content-center">
+          <i class="bi bi-pencil" style="font-size: 0.8rem;"></i>
+        </span> Оперативное
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Таблица расписания -->
+<div class="schedule-fullwidth-wrapper">
+  <div class="schedule-table">
+    <div class="schedule-header d-flex">
+      <div class="user-name"><strong>День</strong></div>
+      {% for hour in hours %}
+        <div class="time-slot">{{ hour }}:00</div>
+      {% endfor %}
+    </div>
+
+    {% for date, blocks in schedule_by_day %}
+      <div class="user-schedule-wrapper">
+        <div class="user-name">
+          {% if mode == 'template' %}
+            {% for num, name in DAYS_OF_WEEK %}
+              {% if num == date.weekday %}
+                {{ name }}
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            {{ date|date:"D, d.m" }}
+          {% endif %}
+        </div>
+        <div class="user-schedule d-flex">
+          {% for block in blocks %}
+            {% if block.type == 'activity' %}
+              <div class="activity-block {{ block.status_class }}"
+                   style="left: calc(({{ block.start_offset }} - 9) * (100% / {{ hours|length }}));
+                          width: calc({{ block.duration }} * (100% / {{ hours|length }}));">
+                <div class="activity">
+                  <strong>
+                    {% if block.source == 'operational' %}
+                      <i class="bi bi-pencil me-1" title="Оперативная запись"></i>
+                    {% endif %}
+                    {{ block.activity }}
+                  </strong><br>
+
+                  <small>{{ block.availability }}</small><br>
+                  <small>{{ block.start_time|time:"H:i" }}–{{ block.end_time|time:"H:i" }}</small>
+                </div>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

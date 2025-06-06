@@ -1,0 +1,201 @@
+{% extends "schedule/base.html" %}
+{% load schedule_tags %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+  <h2 class="mb-4">Редактирование шаблона расписания</h2>
+
+  <div class="d-flex gap-4 align-items-stretch mb-4 flex-wrap">
+    <!-- Карточка фильтров и кнопок -->
+    <div class="card shadow-sm flex-grow-1">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+
+          <!-- GET форма фильтрации -->
+          <form method="get" class="d-flex align-items-center gap-3 mb-0 flex-nowrap">
+            {% if schedule_mode == 'two' %}
+              <select name="week" class="form-select w-auto" onchange="this.form.submit()">
+                <option value="">Выберите неделю</option>
+                <option value="1" {% if selected_week == 1 %}selected{% endif %}>Первая неделя</option>
+                <option value="2" {% if selected_week == 2 %}selected{% endif %}>Вторая неделя</option>
+              </select>
+            {% else %}
+              <input type="hidden" name="week" value="1">
+            {% endif %}
+
+            <select name="day" class="form-select w-auto" onchange="this.form.submit()">
+              <option value="">Выберите день</option>
+              {% for num, name in days %}
+                <option value="{{ num }}" {% if selected_day == num %}selected{% endif %}>{{ name }}</option>
+              {% endfor %}
+            </select>
+          </form>
+
+          <!-- Кнопки действий -->
+          <div class="d-flex gap-3 flex-wrap">
+            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addModal">Добавить</button>
+            <button type="submit" form="main-post-form" name="action" value="save" class="btn btn-primary">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Отдельная карточка с легендой -->
+    <div class="card shadow-sm" style="min-width: 200px;">
+      <div class="card-body d-flex flex-column justify-content-center gap-2 h-100">
+        <div class="legend-item d-flex align-items-center gap-2">
+          <span class="legend-color legend-available"></span> Доступен
+        </div>
+        <div class="legend-item d-flex align-items-center gap-2">
+          <span class="legend-color legend-unavailable"></span> Недоступен
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  {% if error_message %}
+    <div class="alert alert-danger">{{ error_message }}</div>
+  {% endif %}
+
+  <!-- Основная форма POST -->
+  <form method="post" id="main-post-form">
+    {% csrf_token %}
+    <input type="hidden" name="week" value="{{ selected_week }}">
+    <input type="hidden" name="day" value="{{ selected_day }}">
+
+    <!-- Таблица -->
+    <div class="fixed-table">
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered text-center w-100">
+          <thead class="table-light">
+            <tr>
+              <th>Активность</th>
+              <th>Доступность</th>
+              <th>Начало</th>
+              <th>Окончание</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if entries %}
+              {% for entry in entries %}
+                <tr>
+                  <td><input type="text" name="activity_{{ entry.id }}" class="form-control" value="{{ entry.activity }}"></td>
+                  <td>
+                    <select name="availability_{{ entry.id }}" class="form-select">
+                      <option value="Доступен" {% if entry.availability == 'Доступен' %}selected{% endif %}>Доступен</option>
+                      <option value="Недоступен" {% if entry.availability == 'Недоступен' %}selected{% endif %}>Недоступен</option>
+                    </select>
+                  </td>
+                  <td><input type="time" name="start_time_{{ entry.id }}" class="form-control" value="{{ entry.start_time|time:'H:i' }}"></td>
+                  <td><input type="time" name="end_time_{{ entry.id }}" class="form-control" value="{{ entry.end_time|time:'H:i' }}"></td>
+                  <td>
+                    <button type="submit"
+                            form="main-post-form"
+                            name="action"
+                            value="delete_{{ entry.id }}"
+                            class="btn btn-outline-danger btn-sm"
+                            onclick="return confirm('Вы уверены, что хотите удалить эту запись?');">
+                      Удалить
+                    </button>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="5" class="text-muted">Нет записей для отображения. Выберите неделю и день.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </form>
+
+  {% if schedule_blocks %}
+    <h4 class="mb-4">Визуализация расписания</h4>
+    <div class="schedule-fullwidth-wrapper">
+      <div class="schedule-table">
+        <div class="schedule-header d-flex">
+          {% for hour in hours %}
+            <div class="time-slot">{{ hour }}:00</div>
+          {% endfor %}
+        </div>
+        <div class="user-schedule-wrapper">
+          <div class="user-schedule d-flex">
+            {% for block in schedule_blocks %}
+              {% if block.type == 'activity' %}
+                <div class="activity-block {{ block.status_class }}"
+                     style="left: calc(({{ block.start_offset }} - 9) * (100% / {{ hours|length }}));
+                            width: calc({{ block.duration }} * (100% / {{ hours|length }}));">
+                  <div class="activity">
+                    <strong>{{ block.activity }}</strong><br>
+                    <small>{{ block.availability }}</small><br>
+                    <small>{{ block.start_time|time:"H:i" }}–{{ block.end_time|time:"H:i" }}</small>
+                  </div>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Модальное окно добавления -->
+  <div class="modal {% if error_message and request.POST.action == 'add' %}show d-block{% else %}fade{% endif %}"
+       id="addModal"
+       tabindex="-1"
+       aria-labelledby="addModalLabel"
+       aria-hidden="{% if error_message and request.POST.action == 'add' %}false{% else %}true{% endif %}"
+       style="{% if error_message and request.POST.action == 'add' %}display: block; background-color: rgba(0,0,0,0.5);{% endif %}">
+    <div class="modal-dialog modal-md">
+      <div class="modal-content">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="week" value="{{ selected_week }}">
+          <input type="hidden" name="day" value="{{ selected_day }}">
+          <input type="hidden" name="action" value="add">
+
+          <div class="modal-header">
+            <h5 class="modal-title w-100 text-center" id="addModalLabel">Добавление элемента</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <hr class="m-0">
+          <div class="modal-body">
+            {% if error_message and request.POST.action == 'add' %}
+              <div class="alert alert-danger">{{ error_message }}</div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label">Деятельность</label>
+              <input type="text" name="new_activity" class="form-control" value="{{ new_activity }}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Доступность</label>
+              <select name="new_availability" class="form-select" required>
+                <option value="">Выберите доступность</option>
+                <option value="Доступен" {% if new_availability == 'Доступен' %}selected{% endif %}>Доступен</option>
+                <option value="Недоступен" {% if new_availability == 'Недоступен' %}selected{% endif %}>Недоступен</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Время начала</label>
+              <input type="time" name="new_start_time" class="form-control" value="{{ new_start_time }}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Время окончания</label>
+              <input type="time" name="new_end_time" class="form-control" value="{{ new_end_time }}" required>
+            </div>
+          </div>
+          <div class="modal-footer justify-content-center">
+            <button type="submit" class="btn btn-success">Добавить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
